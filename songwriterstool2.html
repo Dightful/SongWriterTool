@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Songwriter's Desk</title>
+<style>
+  :root{
+    --paper:#f4ecd8;
+    --paper-shadow:#e3d8bb;
+    --rule-line:#cdb98c;
+    --ink:#2b2a28;
+    --ink-soft:#5b5650;
+
+    --manuscript:#1b1f2a;
+    --manuscript-alt:#232a3a;
+    --manuscript-deep:#11151e;
+    --staff:#d8d0ba;
+    --staff-dim:#8a90a3;
+    --cream-text:#efe7d2;
+
+    --brass:#c99a3b;
+    --brass-bright:#e6c06a;
+    --brass-dark:#8f6c22;
+
+    --danger:#c25b50;
+
+    --font-serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+    --font-ui:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:"SF Mono","JetBrains Mono",Consolas,"Courier New",monospace;
+
+    --line-height:30px;
+    --divider-w:36px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:var(--font-ui);
+    color:var(--ink);
+    background:var(--manuscript-deep);
+    overflow:hidden;
+  }
+  button{font-family:inherit;cursor:pointer;}
+  select,input{font-family:inherit;}
+
+  *:focus-visible{outline:2px solid var(--brass-bright);outline-offset:2px;}
+
+  /* ---------- layout shell ---------- */
+  .app{
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* ---------- header ---------- */
+  header.topbar{
+    background:linear-gradient(180deg,var(--manuscript-alt),var(--manuscript));
+    border-bottom:3px solid var(--brass-dark);
+    box-shadow:0 2px 0 var(--brass) inset;
+    padding:10px 18px;
+    display:flex;
+    align-items:center;
+    gap:18px;
+    flex-wrap:wrap;
+    flex-shrink:0;
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    color:var(--cream-text);
+    white-space:nowrap;
+  }
+  .brand h1{
+    font-family:var(--font-ui);
+    font-size:21px;
+    font-weight:700;
+    margin:0;
+    color:var(--brass-bright);
+    letter-spacing:.2px;
+  }
+  .title-field{
+    flex:1 1 220px;
+    min-width:140px;
+  }
+  .title-field input{
+    width:100%;
+    background:var(--paper);
+    border:1px solid var(--brass-dark);
+    border-radius:4px;
+    padding:8px 12px;
+    font-family:var(--font-ui);
+    font-size:15px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .topbar-actions{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  .btn{
+    background:var(--manuscript-alt);
+    color:var(--cream-text);
+    border:1px solid var(--brass-dark);
+    border-radius:5px;
+    padding:8px 14px;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.2px;
+    transition:background .15s, transform .1s;
+    white-space:nowrap;
+  }
+  .btn:hover{background:#2c3445;}
+  .btn:active{transform:translateY(1px);}
+  .btn.brass{
+    background:linear-gradient(180deg,var(--brass-bright),var(--brass));
+    color:#2b2105;
+    border-color:var(--brass-dark);
+  }
+  .btn.brass:hover{filter:brightness(1.06);}
+  .btn.ghost{background:transparent;}
+  .btn.small{padding:5px 10px;font-size:12px;}
+  .file-label{display:inline-flex;}
+  input[type=file]{display:none;}
+
+  .status{
+    font-size:12px;
+    color:var(--staff-dim);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+    margin-left:auto;
+  }
+  .status .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--brass);
+  }
+  .status .dot.dirty{background:var(--danger);}
+
+  /* ---------- workspace / split view ---------- */
+  .workspace{
+    flex:1;
+    display:flex;
+    min-height:0;
+    position:relative;
+  }
+  .panel{
+    flex:1 1 50%;
+    min-width:0;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    overflow:hidden;
+    transition:flex-basis .22s ease;
+  }
+  .resizing .panel{transition:none;}
+  .panel.collapsed{padding:0;}
+  .panel.collapsed > *{display:none;}
+  .panel.collapsed{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .panel-tab{
+    display:none;
+    font-family:var(--font-ui);
+    font-size:14px;
+    font-weight:600;
+    color:var(--cream-text);
+    writing-mode:vertical-rl;
+  }
+  .panel.collapsed .panel-tab{display:block;}
+
+  /* ----- lyrics panel ----- */
+  .lyrics-panel{background:var(--paper-shadow);}
+  .panel-head{
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 16px;
+    flex-wrap:wrap;
+  }
+  .lyrics-panel .panel-head{
+    background:var(--paper-shadow);
+    border-bottom:1px solid var(--rule-line);
+  }
+  .panel-head h2{
+    margin:0;
+    font-family:var(--font-ui);
+    font-size:17px;
+    font-weight:700;
+    color:var(--ink);
+    letter-spacing:.2px;
+  }
+  .spell-toggle{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-left:auto;
+  }
+  .word-count{font-size:12px;color:var(--ink-soft);}
+
+  .paper-wrap{
+    position:relative;
+    flex:1;
+    min-height:0;
+    overflow:hidden;
+    background:var(--paper);
+  }
+
+  /* notebook holes */
+  .paper-wrap::before{
+    content:"";
+    position:absolute;
+    left:8px;
+    top:0;
+    bottom:0;
+    width:14px;
+    background-image:radial-gradient(circle, var(--manuscript-alt) 2.6px, transparent 3.2px);
+    background-size:14px var(--line-height);
+    background-position:0 15px; /* centers holes between ruled lines */
+    background-repeat:repeat-y;
+    opacity:.5;
+    z-index:1;
+    pointer-events:none;
+  }
+
+  textarea.lyrics-paper{
+    position:relative;
+    width:100%;
+    height:100%;
+    border:none;
+    resize:none;
+    outline:none;
+    overflow:auto;
+
+    font-family:var(--font-serif);
+    font-size:17px;
+    line-height:var(--line-height);
+    color:var(--ink);
+
+    /* top padding matches one ruled line so text sits on the rules cleanly */
+    padding:30px 22px 18px 30px;
+
+    background-color:var(--paper);
+
+    /* ruled paper aligned to the writing area */
+    background-image:repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--line-height) - 1px),
+      var(--rule-line) calc(var(--line-height) - 1px),
+      var(--rule-line) var(--line-height)
+    );
+    background-repeat:repeat;
+    background-size:100% var(--line-height);
+    background-position:0 30px; /* same as top padding */
+    background-attachment:local;
+
+    caret-color:var(--ink);
+  }
+
+  textarea.lyrics-paper::placeholder{
+    color:rgba(43,42,40,.55);
+  }
+
+  /* ----- divider ----- */
+  .divider{
+    flex:0 0 var(--divider-w);
+    background:linear-gradient(180deg,var(--brass-bright),var(--brass) 40%,var(--brass-dark));
+    border-left:1px solid var(--brass-dark);
+    border-right:1px solid var(--brass-dark);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    cursor:col-resize;
+    position:relative;
+    z-index:2;
+    box-shadow:0 0 8px rgba(0,0,0,.35);
+  }
+  .divider .ridges{
+    position:absolute;
+    top:0;bottom:0;left:0;right:0;
+    background:repeating-linear-gradient(to bottom, rgba(0,0,0,.12) 0 2px, transparent 2px 8px);
+    pointer-events:none;
+  }
+  .divider-btn{
+    width:24px;height:24px;
+    border-radius:50%;
+    border:1px solid var(--brass-dark);
+    background:var(--manuscript-alt);
+    color:var(--cream-text);
+    font-size:12px;
+    display:flex;align-items:center;justify-content:center;
+    line-height:1;
+    position:relative;z-index:3;
+    flex-shrink:0;
+  }
+  .divider-btn:hover{background:#2c3445;}
+  .divider-btn.active{background:var(--danger);border-color:#7a3530;}
+  .divider-grip{
+    width:10px;height:34px;
+    border-radius:5px;
+    background:repeating-linear-gradient(to bottom, var(--manuscript-deep) 0 3px, transparent 3px 7px);
+    position:relative;z-index:3;
+    flex-shrink:0;
+  }
+
+  /* ----- music panel ----- */
+  .music-panel{background:var(--manuscript);}
+  .music-panel .panel-head{
+    background:var(--manuscript-alt);
+    border-bottom:1px solid var(--brass-dark);
+  }
+  .music-panel .panel-head h2{color:var(--brass-bright);}
+  .mode-select{
+    background:var(--manuscript-deep);
+    color:var(--cream-text);
+    border:1px solid var(--brass-dark);
+    border-radius:5px;
+    padding:6px 10px;
+    font-size:13px;
+  }
+  .toolbar{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    padding:10px 16px;
+    background:var(--manuscript-alt);
+    border-bottom:1px solid #2c3445;
+    flex-shrink:0;
+  }
+  .toolbar label{
+    font-size:11px;
+    color:var(--staff-dim);
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    text-transform:uppercase;
+    letter-spacing:.4px;
+  }
+  .toolbar select{
+    background:var(--manuscript-deep);
+    color:var(--cream-text);
+    border:1px solid var(--brass-dark);
+    border-radius:4px;
+    padding:5px 6px;
+    font-size:13px;
+  }
+  .toolbar .spacer{flex:1;}
+  .hint{
+    font-size:11px;
+    color:var(--staff-dim);
+    padding:6px 16px 0;
+    font-style:italic;
+    flex-shrink:0;
+  }
+
+  .editor-body{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* ----- guitar tab grid ----- */
+  .tab-grid-scroll{
+    flex:1;
+    min-height:0;
+    overflow:auto;
+    background:var(--manuscript-deep);
+    padding:18px;
+  }
+  .tab-system{
+    display:flex;
+    margin-bottom:26px;
+  }
+  .tab-labels{
+    display:flex;
+    flex-direction:column;
+    margin-right:8px;
+    flex:0 0 18px;
+  }
+  .tab-labels span{
+    font-family:var(--font-mono);
+    font-size:12px;
+    font-weight:600;
+    color:var(--brass-bright);
+    height:30px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .tab-slots{
+    display:flex;
+    align-items:stretch;
+  }
+  .tab-col{
+    display:flex;
+    flex-direction:column;
+  }
+  .tab-cell{
+    width:28px;
+    height:30px;
+    text-align:center;
+    background-color:transparent;
+    background-image:linear-gradient(to bottom,
+      transparent calc(50% - 1px),
+      var(--staff-dim) calc(50% - 1px),
+      var(--staff-dim) calc(50% + 1px),
+      transparent calc(50% + 1px));
+    color:var(--staff);
+    border:none;
+    font-family:var(--font-mono);
+    font-size:14px;
+    font-weight:600;
+    outline:none;
+    padding:0;
+  }
+  .tab-cell::placeholder{color:var(--staff-dim);opacity:.75;}
+  .tab-cell:focus{background-color:rgba(230,192,106,.18);}
+  .tab-bar{
+    width:3px;
+    background:var(--brass-dark);
+    margin:0 7px;
+    align-self:stretch;
+  }
+
+  .sheet-scroll{
+    flex:1;
+    min-height:0;
+    overflow:auto;
+    padding:8px 8px 20px;
+  }
+  #staffSvg{display:block;}
+  #staffSvg text{font-family:var(--font-mono);}
+
+  /* ---------- mobile / narrow ---------- */
+  @media (max-width:760px){
+    .workspace{flex-direction:column;}
+    .divider{
+      flex-direction:row;
+      flex:0 0 var(--divider-w);
+      width:100%;
+      cursor:row-resize;
+      border-left:none;border-right:none;
+      border-top:1px solid var(--brass-dark);
+      border-bottom:1px solid var(--brass-dark);
+    }
+    .divider .ridges{
+      background:repeating-linear-gradient(to right, rgba(0,0,0,.12) 0 2px, transparent 2px 8px);
+    }
+    .divider-grip{
+      width:34px;
+      height:10px;
+      background:repeating-linear-gradient(to right, var(--manuscript-deep) 0 3px, transparent 3px 7px);
+    }
+    .panel-tab{writing-mode:horizontal-tb;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; animation:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand"><h1>Songwriter's Desk</h1></div>
+    <div class="title-field">
+      <input id="titleInput" type="text" value="Untitled Song" aria-label="Song title">
+    </div>
+    <div class="topbar-actions">
+      <button class="btn ghost" id="btnNew">New project</button>
+      <label class="btn ghost file-label" for="fileLoadInput">Load project</label>
+      <input type="file" id="fileLoadInput" accept=".json,.song,application/json">
+      <button class="btn brass" id="btnSave">Save project</button>
+    </div>
+    <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">Ready</span></div>
+  </header>
+
+  <div class="workspace" id="workspace">
+
+    <section class="panel lyrics-panel" id="lyricsPanel">
+      <div class="panel-head">
+        <h2>Lyrics</h2>
+        <label class="spell-toggle"><input type="checkbox" id="spellToggle" checked> Spell check</label>
+        <span class="word-count" id="wordCount">0 words · 1 line</span>
+      </div>
+      <div class="paper-wrap">
+        <textarea class="lyrics-paper" id="lyricsTextarea" spellcheck="true" lang="en"
+          placeholder="Write your lyrics here, verse by verse..."></textarea>
+      </div>
+      <span class="panel-tab">Lyrics</span>
+    </section>
+
+    <div class="divider" id="divider" role="separator" aria-orientation="vertical" aria-label="Resize lyrics and music panels" tabindex="0">
+      <div class="ridges"></div>
+      <button class="divider-btn" id="btnCollapseLeft" title="Show lyrics full screen" aria-label="Show lyrics full screen" aria-pressed="false">◂</button>
+      <div class="divider-grip" id="dividerGrip" title="Drag to resize, double-click to reset"></div>
+      <button class="divider-btn" id="btnCollapseRight" title="Show music full screen" aria-label="Show music full screen" aria-pressed="false">▸</button>
+    </div>
+
+    <section class="panel music-panel" id="musicPanel">
+      <div class="panel-head">
+        <h2>Music</h2>
+        <select class="mode-select" id="musicModeSelect" aria-label="Music notation style">
+          <option value="tab">Guitar tab (6-string)</option>
+          <option value="sheet">Sheet music</option>
+        </select>
+      </div>
+
+      <div class="editor-body" id="tabEditor">
+        <div class="hint">Click a column and type your fret number — the dash disappears automatically. Arrow keys or Enter move between columns.</div>
+        <div class="toolbar">
+          <button class="btn small" id="btnAddMeasure">+ Add measure</button>
+          <button class="btn small" id="btnNewSystem">↵ Add line</button>
+          <span class="spacer"></span>
+          <button class="btn small ghost" id="btnClearTab">Clear tab</button>
+        </div>
+        <div class="tab-grid-scroll" id="tabGridScroll">
+          <div class="tab-grid-container" id="tabGridContainer"></div>
+        </div>
+      </div>
+
+      <div class="editor-body" id="sheetEditor" style="display:none;">
+        <div class="hint">Pick a pitch and duration, then add notes or rests one at a time. Pairs of eighth notes beam together automatically. Hover any symbol to check what it is.</div>
+        <div class="toolbar">
+          <label>Pitch
+            <select id="pitchSelect">
+              <option>C</option><option selected>D</option><option>E</option>
+              <option>F</option><option>G</option><option>A</option><option>B</option>
+            </select>
+          </label>
+          <label>8ve
+            <select id="octaveSelect">
+              <option>3</option><option selected>4</option><option>5</option><option>6</option>
+            </select>
+          </label>
+          <label>Accidental
+            <select id="accSelect">
+              <option value="">Natural</option>
+              <option value="#">Sharp ♯</option>
+              <option value="b">Flat ♭</option>
+            </select>
+          </label>
+          <label>Duration
+            <select id="durSelect">
+              <option value="w">Whole</option>
+              <option value="h">Half</option>
+              <option value="q" selected>Quarter</option>
+              <option value="e">Eighth</option>
+            </select>
+          </label>
+          <button class="btn small brass" id="btnAddNote">+ Note</button>
+          <button class="btn small" id="btnAddRest">+ Rest</button>
+          <button class="btn small" id="btnNewLineSheet">↵ New line</button>
+          <span class="spacer"></span>
+          <button class="btn small ghost" id="btnUndo">Undo last</button>
+          <button class="btn small ghost" id="btnClearSheet">Clear staff</button>
+        </div>
+        <div class="sheet-scroll" id="sheetScroll">
+          <svg id="staffSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+      </div>
+
+      <span class="panel-tab">Music</span>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- guitar tab data model ---------------- */
+  var MEASURE_LEN = 4;
+  function emptyFrets(){ return ["","","","","",""]; }
+  function makeDefaultSystem(measures){
+    measures = (measures===0) ? 0 : (measures || 4);
+    var slots=[];
+    for(var m=0;m<measures;m++){
+      for(var c=0;c<MEASURE_LEN;c++){ slots.push({frets:emptyFrets()}); }
+      slots.push({bar:true});
+    }
+    return slots;
+  }
+  function sanitizeFret(v){
+    v=(v||"").toString().toUpperCase().replace(/[^0-9X]/g,"");
+    if(v.length>2) v=v.slice(0,2);
+    return v;
+  }
+  function sanitizeLoadedSystems(arr){
+    return arr.map(function(slots){
+      if(!Array.isArray(slots) || !slots.length) return makeDefaultSystem();
+      return slots.map(function(s){
+        if(s && s.bar) return {bar:true};
+        var frets = (s && Array.isArray(s.frets)) ? s.frets.slice(0,6) : emptyFrets();
+        while(frets.length<6) frets.push("");
+        return {frets: frets.map(function(f){ return sanitizeFret(f); })};
+      });
+    });
+  }
+  function parseLegacyTabText(text){
+    var blocks = String(text).split(/\n\s*\n/);
+    var systems=[];
+    blocks.forEach(function(block){
+      var lines = block.split("\n").filter(function(l){ return l.trim().length>0; });
+      if(lines.length<6) return;
+      lines = lines.slice(0,6);
+      var stripped = lines.map(function(l){
+        var idx=l.indexOf("|");
+        var content = idx>=0 ? l.slice(idx+1) : l;
+        if(content.charAt(content.length-1)==="|") content=content.slice(0,-1);
+        return content;
+      });
+      var maxLen = Math.max.apply(null, stripped.map(function(s){ return s.length; }));
+      var slots=[];
+      for(var c=0;c<maxLen;c++){
+        if(stripped[0].charAt(c)==="|"){ slots.push({bar:true}); continue; }
+        var frets=[];
+        for(var r=0;r<6;r++){
+          var ch=stripped[r].charAt(c);
+          frets.push((ch && ch!=="-" && ch!=="|") ? ch : "");
+        }
+        slots.push({frets:frets});
+      }
+      if(slots.length) systems.push(slots);
+    });
+    return systems.length ? systems : [makeDefaultSystem()];
+  }
+
+  /* ---------------- state ---------------- */
+  function defaultState(){
+    return { title:"Untitled Song", lyrics:"", musicMode:"tab", tabSystems:[makeDefaultSystem()], sheetNotes: [] };
+  }
+  var state = defaultState();
+  var dirty = false;
+
+  /* ---------------- element refs ---------------- */
+  var titleInput=document.getElementById("titleInput");
+  var btnNew=document.getElementById("btnNew");
+  var btnSave=document.getElementById("btnSave");
+  var fileLoadInput=document.getElementById("fileLoadInput");
+  var statusText=document.getElementById("statusText");
+  var statusDot=document.getElementById("statusDot");
+
+  var workspace=document.getElementById("workspace");
+  var lyricsPanel=document.getElementById("lyricsPanel");
+  var musicPanel=document.getElementById("musicPanel");
+  var divider=document.getElementById("divider");
+  var dividerGrip=document.getElementById("dividerGrip");
+  var btnCollapseLeft=document.getElementById("btnCollapseLeft");
+  var btnCollapseRight=document.getElementById("btnCollapseRight");
+
+  var lyricsTextarea=document.getElementById("lyricsTextarea");
+  var spellToggle=document.getElementById("spellToggle");
+  var wordCount=document.getElementById("wordCount");
+
+  var musicModeSelect=document.getElementById("musicModeSelect");
+  var tabEditor=document.getElementById("tabEditor");
+  var sheetEditor=document.getElementById("sheetEditor");
+  var tabGridScroll=document.getElementById("tabGridScroll");
+  var tabGridContainer=document.getElementById("tabGridContainer");
+  var btnAddMeasure=document.getElementById("btnAddMeasure");
+  var btnNewSystem=document.getElementById("btnNewSystem");
+  var btnClearTab=document.getElementById("btnClearTab");
+
+  var pitchSelect=document.getElementById("pitchSelect");
+  var octaveSelect=document.getElementById("octaveSelect");
+  var accSelect=document.getElementById("accSelect");
+  var durSelect=document.getElementById("durSelect");
+  var btnAddNote=document.getElementById("btnAddNote");
+  var btnAddRest=document.getElementById("btnAddRest");
+  var btnNewLineSheet=document.getElementById("btnNewLineSheet");
+  var btnUndo=document.getElementById("btnUndo");
+  var btnClearSheet=document.getElementById("btnClearSheet");
+  var sheetScroll=document.getElementById("sheetScroll");
+  var staffSvg=document.getElementById("staffSvg");
+
+  /* ---------------- helpers ---------------- */
+  function markDirty(){ dirty=true; statusText.textContent="Unsaved changes"; statusDot.className="dot dirty"; }
+  function markClean(msg){ dirty=false; statusText.textContent=msg; statusDot.className="dot"; }
+
+  function updateWordCount(){
+    var text=lyricsTextarea.value;
+    var trimmed=text.trim();
+    var words=trimmed? trimmed.split(/\s+/).filter(Boolean).length : 0;
+    var lines=text.length? text.split("\n").length : 1;
+    wordCount.textContent=words+" word"+(words===1?"":"s")+" · "+lines+" line"+(lines===1?"":"s");
+  }
+
+  function toggleMusicMode(){
+    if(state.musicMode==="sheet"){
+      tabEditor.style.display="none";
+      sheetEditor.style.display="flex";
+      requestAnimationFrame(renderStaff);
+    } else {
+      sheetEditor.style.display="none";
+      tabEditor.style.display="flex";
+    }
+  }
+
+  /* ---------------- guitar tab grid rendering ---------------- */
+  function renderTabGrid(){
+    tabGridContainer.innerHTML="";
+    var stringLabels=["e","B","G","D","A","E"];
+    var ariaLabels=["High E","B","G","D","A","Low E"];
+    state.tabSystems.forEach(function(slots, sysIdx){
+      var sysEl=document.createElement("div");
+      sysEl.className="tab-system";
+
+      var labelsEl=document.createElement("div");
+      labelsEl.className="tab-labels";
+      stringLabels.forEach(function(l){
+        var span=document.createElement("span");
+        span.textContent=l;
+        labelsEl.appendChild(span);
+      });
+      sysEl.appendChild(labelsEl);
+
+      var slotsEl=document.createElement("div");
+      slotsEl.className="tab-slots";
+      var noteIdx=0;
+      slots.forEach(function(slot){
+        if(slot.bar){
+          var barEl=document.createElement("div");
+          barEl.className="tab-bar";
+          slotsEl.appendChild(barEl);
+          return;
+        }
+        var colEl=document.createElement("div");
+        colEl.className="tab-col";
+        for(var row=0; row<6; row++){
+          var input=document.createElement("input");
+          input.className="tab-cell";
+          input.type="text";
+          input.maxLength=2;
+          input.placeholder="\u2013";
+          input.autocomplete="off";
+          input.spellcheck=false;
+          input.value=slot.frets[row]||"";
+          input.dataset.sys=sysIdx;
+          input.dataset.row=row;
+          input.dataset.note=noteIdx;
+          input.setAttribute("aria-label", ariaLabels[row]+" string, column "+(noteIdx+1));
+          colEl.appendChild(input);
+        }
+        slotsEl.appendChild(colEl);
+        noteIdx++;
+      });
+      sysEl.appendChild(slotsEl);
+      tabGridContainer.appendChild(sysEl);
+    });
+  }
+
+  function findSlotPosByNoteIndex(slots, noteIndex){
+    var count=-1;
+    for(var i=0;i<slots.length;i++){
+      if(!slots[i].bar){ count++; if(count===noteIndex) return i; }
+    }
+    return -1;
+  }
+  function moveFocus(sys,row,note){
+    var sel='.tab-cell[data-sys="'+sys+'"][data-row="'+row+'"][data-note="'+note+'"]';
+    var el=tabGridContainer.querySelector(sel);
+    if(el) el.focus();
+  }
+
+  tabGridContainer.addEventListener("input", function(e){
+    var t=e.target;
+    if(!t.classList || !t.classList.contains("tab-cell")) return;
+    var clean=sanitizeFret(t.value);
+    t.value=clean;
+    var sys=+t.dataset.sys, row=+t.dataset.row, note=+t.dataset.note;
+    var slots=state.tabSystems[sys];
+    var slotPos= slots ? findSlotPosByNoteIndex(slots, note) : -1;
+    if(slotPos>=0){ slots[slotPos].frets[row]=clean; }
+    markDirty();
+    if(clean.length>=2){ moveFocus(sys,row,note+1); }
+  });
+
+  tabGridContainer.addEventListener("keydown", function(e){
+    var t=e.target;
+    if(!t.classList || !t.classList.contains("tab-cell")) return;
+    var sys=+t.dataset.sys, row=+t.dataset.row, note=+t.dataset.note;
+    if(e.key==="ArrowRight" || e.key==="Enter"){ e.preventDefault(); moveFocus(sys,row,note+1); }
+    else if(e.key==="ArrowLeft"){ e.preventDefault(); moveFocus(sys,row,note-1); }
+    else if(e.key==="ArrowDown"){ e.preventDefault(); moveFocus(sys,Math.min(5,row+1),note); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); moveFocus(sys,Math.max(0,row-1),note); }
+  });
+
+  btnAddMeasure.addEventListener("click", function(){
+    if(!state.tabSystems.length){ state.tabSystems.push(makeDefaultSystem(0)); }
+    var last=state.tabSystems[state.tabSystems.length-1];
+    for(var c=0;c<MEASURE_LEN;c++){ last.push({frets:emptyFrets()}); }
+    last.push({bar:true});
+    renderTabGrid();
+    markDirty();
+    requestAnimationFrame(function(){ tabGridScroll.scrollLeft=tabGridScroll.scrollWidth; });
+  });
+  btnNewSystem.addEventListener("click", function(){
+    state.tabSystems.push(makeDefaultSystem());
+    renderTabGrid();
+    markDirty();
+    requestAnimationFrame(function(){ tabGridScroll.scrollTop=tabGridScroll.scrollHeight; });
+  });
+  btnClearTab.addEventListener("click", function(){
+    if(!confirm("Clear the tab editor? This cannot be undone.")) return;
+    state.tabSystems=[makeDefaultSystem()];
+    renderTabGrid();
+    markDirty();
+  });
+
+  /* ---------------- sheet music renderer (with beaming) ---------------- */
+  var LETTER_INDEX={C:0,D:1,E:2,F:3,G:4,A:5,B:6};
+  function durUnits(d){ return {w:8,h:4,q:2,e:1}[d]||2; }
+  function durName(d){ return {w:"Whole",h:"Half",q:"Quarter",e:"Eighth"}[d]||"Quarter"; }
+  function slotWidth(d){ return 16*durUnits(d)+14; }
+  function svgEl(tag,attrs){
+    var el=document.createElementNS("http://www.w3.org/2000/svg",tag);
+    for(var k in attrs){ el.setAttribute(k, attrs[k]); }
+    return el;
+  }
+
+  function buildRenderGroups(notes){
+    var groups=[]; var i=0;
+    while(i<notes.length){
+      var n=notes[i];
+      if(n.type==="break"){ groups.push({type:"break"}); i++; continue; }
+      if(n.rest){ groups.push({type:"rest", note:n, totalWidth:slotWidth(n.dur), totalUnits:durUnits(n.dur)}); i++; continue; }
+      if(n.dur==="e"){
+        var run=[]; var j=i;
+        while(j<notes.length && notes[j] && notes[j].type!=="break" && !notes[j].rest && notes[j].dur==="e"){
+          run.push(notes[j]); j++;
+        }
+        if(run.length>=2){
+          var k=0;
+          while(k<run.length){
+            if(k+1<run.length){
+              groups.push({type:"beam", notes:[run[k],run[k+1]], totalWidth:slotWidth("e")*2, totalUnits:2});
+              k+=2;
+            } else {
+              groups.push({type:"note", note:run[k], totalWidth:slotWidth("e"), totalUnits:1});
+              k+=1;
+            }
+          }
+          i=j;
+          continue;
+        } else {
+          groups.push({type:"note", note:n, totalWidth:slotWidth(n.dur), totalUnits:durUnits(n.dur)});
+          i++; continue;
+        }
+      }
+      groups.push({type:"note", note:n, totalWidth:slotWidth(n.dur), totalUnits:durUnits(n.dur)});
+      i++;
+    }
+    return groups;
+  }
+
+  function renderStaff(){
+    while(staffSvg.firstChild){ staffSvg.removeChild(staffSvg.firstChild); }
+    var width=Math.max(sheetScroll.clientWidth-6, 340);
+    var lineGap=10;
+    var marginLeft=16, marginRight=16, clefWidth=64;
+    var systemTop=26, systemHeight=120;
+    var systemIndex=0;
+    var unitsInMeasure=0;
+    var x=marginLeft+clefWidth;
+
+    function lineYs(topY){
+      return [topY, topY+lineGap, topY+2*lineGap, topY+3*lineGap, topY+4*lineGap];
+    }
+    function drawStaffLines(topY){
+      var ys=lineYs(topY);
+      for(var i=0;i<5;i++){
+        staffSvg.appendChild(svgEl("line",{x1:marginLeft,x2:width-marginRight,y1:ys[i],y2:ys[i],stroke:"var(--staff-dim)","stroke-width":1.2}));
+      }
+    }
+    function drawClefAndTime(topY){
+      var ys=lineYs(topY);
+      var clef=svgEl("text",{x:marginLeft+2,y:ys[4]+2,"font-size":44,fill:"var(--brass-bright)","font-family":"Segoe UI Symbol, Noto Sans Symbols, serif"});
+      clef.textContent="\uD834\uDD1E";
+      staffSvg.appendChild(clef);
+      var t1=svgEl("text",{x:marginLeft+38,y:ys[1]+4,"font-size":15,"font-weight":"bold",fill:"var(--staff)"});
+      t1.textContent="4";
+      var t2=svgEl("text",{x:marginLeft+38,y:ys[3]+4,"font-size":15,"font-weight":"bold",fill:"var(--staff)"});
+      t2.textContent="4";
+      staffSvg.appendChild(t1); staffSvg.appendChild(t2);
+    }
+    function drawLedger(px,y,ys){
+      var top=ys[0], bottom=ys[4];
+      if(y<top-1){
+        var pos=top-lineGap;
+        while(pos>=y-1){
+          staffSvg.appendChild(svgEl("line",{x1:px-9,x2:px+9,y1:pos,y2:pos,stroke:"var(--staff)","stroke-width":1.3}));
+          pos-=lineGap;
+        }
+      } else if(y>bottom+1){
+        var pos2=bottom+lineGap;
+        while(pos2<=y+1){
+          staffSvg.appendChild(svgEl("line",{x1:px-9,x2:px+9,y1:pos2,y2:pos2,stroke:"var(--staff)","stroke-width":1.3}));
+          pos2+=lineGap;
+        }
+      }
+    }
+    function pitchY(note,ys){
+      var absStep=note.octave*7+LETTER_INDEX[note.step];
+      return ys[4]-(absStep-30)*(lineGap/2);
+    }
+    function drawAccidental(px,y,note,g){
+      if(!note.acc) return;
+      var accText=svgEl("text",{x:px-15,y:y+4,"font-size":13,fill:"var(--staff)"});
+      accText.textContent = note.acc==="#" ? "\u266F" : "\u266D";
+      g.appendChild(accText);
+    }
+    function drawNote(px,topY,note){
+      var ys=lineYs(topY);
+      var y=pitchY(note,ys);
+      drawLedger(px,y,ys);
+      var absStep=note.octave*7+LETTER_INDEX[note.step];
+      var stemUp=absStep<34;
+      var hollow=(note.dur==="w"||note.dur==="h");
+      var g=svgEl("g",{});
+      var title=svgEl("title",{});
+      title.textContent=note.step+(note.acc==="#"?"\u266F":note.acc==="b"?"\u266D":"")+note.octave+" \u00b7 "+durName(note.dur);
+      g.appendChild(title);
+      g.appendChild(svgEl("ellipse",{cx:px,cy:y,rx:6.4,ry:4.4,transform:"rotate(-18 "+px+" "+y+")",fill: hollow? "none":"var(--staff)", stroke:"var(--staff)","stroke-width":1.6}));
+      drawAccidental(px,y,note,g);
+      if(note.dur!=="w"){
+        var stemX=px+(stemUp?6.2:-6.2);
+        var stemY2=y+(stemUp?-34:34);
+        g.appendChild(svgEl("line",{x1:stemX,y1:y,x2:stemX,y2:stemY2,stroke:"var(--staff)","stroke-width":1.6}));
+        if(note.dur==="e"){
+          var dir=stemUp?1:-1;
+          g.appendChild(svgEl("path",{d:"M "+stemX+" "+stemY2+" C "+(stemX+9*dir)+" "+(stemY2+5*dir)+", "+(stemX+8*dir)+" "+(stemY2+16*dir)+", "+stemX+" "+(stemY2+20*dir),stroke:"var(--staff)","stroke-width":1.6,fill:"none"}));
+        }
+      }
+      staffSvg.appendChild(g);
+    }
+    function drawBeamGroup(xStart, topY, notesArr){
+      var ys=lineYs(topY);
+      var positions=[];
+      var px=xStart;
+      notesArr.forEach(function(note){
+        var y=pitchY(note,ys);
+        drawLedger(px,y,ys);
+        positions.push({x:px,y:y,note:note});
+        px+=slotWidth("e");
+      });
+      var avgAbs=notesArr.reduce(function(s,n){ return s+(n.octave*7+LETTER_INDEX[n.step]); },0)/notesArr.length;
+      var stemUp=avgAbs<34;
+      var ysList=positions.map(function(p){ return p.y; });
+      var beamY = stemUp ? (Math.min.apply(null,ysList)-30) : (Math.max.apply(null,ysList)+30);
+
+      positions.forEach(function(p){
+        var g=svgEl("g",{});
+        var title=svgEl("title",{});
+        title.textContent=p.note.step+(p.note.acc==="#"?"\u266F":p.note.acc==="b"?"\u266D":"")+p.note.octave+" \u00b7 Eighth (beamed)";
+        g.appendChild(title);
+        g.appendChild(svgEl("ellipse",{cx:p.x,cy:p.y,rx:6.4,ry:4.4,transform:"rotate(-18 "+p.x+" "+p.y+")",fill:"var(--staff)",stroke:"var(--staff)","stroke-width":1.6}));
+        drawAccidental(p.x,p.y,p.note,g);
+        var stemX=p.x+(stemUp?6.2:-6.2);
+        g.appendChild(svgEl("line",{x1:stemX,y1:p.y,x2:stemX,y2:beamY,stroke:"var(--staff)","stroke-width":1.6}));
+        staffSvg.appendChild(g);
+      });
+
+      var firstX=positions[0].x+(stemUp?6.2:-6.2);
+      var lastX=positions[positions.length-1].x+(stemUp?6.2:-6.2);
+      staffSvg.appendChild(svgEl("line",{x1:firstX,y1:beamY,x2:lastX,y2:beamY,stroke:"var(--staff)","stroke-width":3.6}));
+    }
+    function drawRest(px,topY,dur){
+      var ys=lineYs(topY);
+      var mid=ys[2];
+      var g=svgEl("g",{});
+      var title=svgEl("title",{});
+      title.textContent=durName(dur)+" rest";
+      g.appendChild(title);
+      if(dur==="w"){
+        g.appendChild(svgEl("rect",{x:px-8,y:mid-lineGap-5,width:16,height:5,fill:"var(--staff)"}));
+      } else if(dur==="h"){
+        g.appendChild(svgEl("rect",{x:px-8,y:mid,width:16,height:5,fill:"var(--staff)"}));
+      } else if(dur==="q"){
+        g.appendChild(svgEl("path",{d:"M "+(px-3)+" "+(mid-13)+" C "+(px+7)+" "+(mid-6)+", "+(px-7)+" "+(mid-1)+", "+(px+4)+" "+(mid+5)+" C "+(px-4)+" "+(mid+9)+", "+(px+5)+" "+(mid+11)+", "+px+" "+(mid+15),stroke:"var(--staff)","stroke-width":1.8,fill:"none"}));
+      } else {
+        g.appendChild(svgEl("path",{d:"M "+(px-3)+" "+(mid-9)+" C "+(px+7)+" "+(mid-4)+", "+(px-4)+" "+(mid+1)+", "+(px+3)+" "+(mid+9),stroke:"var(--staff)","stroke-width":1.8,fill:"none"}));
+        g.appendChild(svgEl("circle",{cx:px+4,cy:mid-8,r:2.6,fill:"var(--staff)"}));
+      }
+      staffSvg.appendChild(g);
+    }
+    function drawBarline(px,topY){
+      var ys=lineYs(topY);
+      staffSvg.appendChild(svgEl("line",{x1:px,x2:px,y1:ys[0],y2:ys[4],stroke:"var(--staff)","stroke-width":1.4}));
+    }
+    function startSystem(){
+      var topY=systemTop+systemIndex*systemHeight;
+      drawStaffLines(topY);
+      drawClefAndTime(topY);
+      x=marginLeft+clefWidth;
+    }
+
+    startSystem();
+    var anyNotes=false;
+    var groups=buildRenderGroups(state.sheetNotes);
+    groups.forEach(function(grp){
+      if(grp.type==="break"){
+        systemIndex++; startSystem(); unitsInMeasure=0; return;
+      }
+      anyNotes=true;
+      if(x+grp.totalWidth>width-marginRight){ systemIndex++; startSystem(); }
+      var topY=systemTop+systemIndex*systemHeight;
+      if(grp.type==="beam"){ drawBeamGroup(x,topY,grp.notes); }
+      else if(grp.type==="rest"){ drawRest(x,topY,grp.note.dur); }
+      else { drawNote(x,topY,grp.note); }
+      x+=grp.totalWidth;
+      unitsInMeasure+=grp.totalUnits;
+      if(unitsInMeasure>=8){
+        x+=4;
+        drawBarline(x,topY);
+        x+=10;
+        unitsInMeasure=0;
+      }
+    });
+    if(anyNotes){
+      var topYEnd=systemTop+systemIndex*systemHeight;
+      drawBarline(x+2,topYEnd);
+    }
+
+    var totalHeight=systemTop+(systemIndex+1)*systemHeight+16;
+    staffSvg.setAttribute("viewBox","0 0 "+width+" "+totalHeight);
+    staffSvg.setAttribute("width",width);
+    staffSvg.setAttribute("height",totalHeight);
+  }
+
+  /* ---------------- divider drag / collapse ---------------- */
+  var splitState="split";
+  var customPct=50;
+  var dragging=false;
+
+  function isStacked(){ return window.matchMedia("(max-width:760px)").matches; }
+
+  function setBasis(pct){
+    lyricsPanel.style.flexBasis=pct+"%";
+    musicPanel.style.flexBasis=(100-pct)+"%";
+    lyricsPanel.classList.remove("collapsed");
+    musicPanel.classList.remove("collapsed");
+  }
+  function applySplit(){
+    if(splitState==="lyrics-full"){
+      lyricsPanel.style.flexBasis="100%";
+      musicPanel.style.flexBasis="0%";
+      lyricsPanel.classList.remove("collapsed");
+      musicPanel.classList.add("collapsed");
+    } else if(splitState==="music-full"){
+      lyricsPanel.style.flexBasis="0%";
+      musicPanel.style.flexBasis="100%";
+      musicPanel.classList.remove("collapsed");
+      lyricsPanel.classList.add("collapsed");
+    } else {
+      setBasis(customPct);
+    }
+    btnCollapseLeft.classList.toggle("active", splitState==="lyrics-full");
+    btnCollapseRight.classList.toggle("active", splitState==="music-full");
+    btnCollapseLeft.setAttribute("aria-pressed", splitState==="lyrics-full");
+    btnCollapseRight.setAttribute("aria-pressed", splitState==="music-full");
+    requestAnimationFrame(function(){ if(state.musicMode==="sheet") renderStaff(); });
+  }
+
+  btnCollapseLeft.addEventListener("click", function(){
+    splitState = splitState==="lyrics-full" ? "split" : "lyrics-full";
+    applySplit();
+  });
+  btnCollapseRight.addEventListener("click", function(){
+    splitState = splitState==="music-full" ? "split" : "music-full";
+    applySplit();
+  });
+  dividerGrip.addEventListener("dblclick", function(){
+    splitState="split"; customPct=50; applySplit();
+  });
+
+  function startDrag(){
+    dragging=true; splitState="split";
+    document.body.classList.add("resizing");
+  }
+  function moveDrag(clientX, clientY){
+    if(!dragging) return;
+    var rect=workspace.getBoundingClientRect();
+    var pct;
+    if(isStacked()){
+      pct=((clientY-rect.top)/rect.height)*100;
+    } else {
+      pct=((clientX-rect.left)/rect.width)*100;
+    }
+    pct=Math.min(88, Math.max(12, pct));
+    customPct=pct;
+    setBasis(customPct);
+  }
+  function endDrag(){
+    if(!dragging) return;
+    dragging=false;
+    document.body.classList.remove("resizing");
+    applySplit();
+  }
+
+  divider.addEventListener("mousedown", function(e){
+    if(e.target.closest("button")) return;
+    startDrag();
+    e.preventDefault();
+  });
+  window.addEventListener("mousemove", function(e){ moveDrag(e.clientX, e.clientY); });
+  window.addEventListener("mouseup", endDrag);
+
+  divider.addEventListener("touchstart", function(e){
+    if(e.target.closest("button")) return;
+    startDrag();
+  }, {passive:true});
+  window.addEventListener("touchmove", function(e){
+    if(!dragging) return;
+    var t=e.touches[0];
+    moveDrag(t.clientX, t.clientY);
+  }, {passive:true});
+  window.addEventListener("touchend", endDrag);
+
+  divider.addEventListener("keydown", function(e){
+    if(e.key==="ArrowLeft" || e.key==="ArrowUp"){
+      splitState="split"; customPct=Math.max(12, customPct-4); applySplit(); e.preventDefault();
+    } else if(e.key==="ArrowRight" || e.key==="ArrowDown"){
+      splitState="split"; customPct=Math.min(88, customPct+4); applySplit(); e.preventDefault();
+    } else if(e.key==="Home"){
+      splitState="lyrics-full"; applySplit(); e.preventDefault();
+    } else if(e.key==="End"){
+      splitState="music-full"; applySplit(); e.preventDefault();
+    }
+  });
+
+  var resizeTimer=null;
+  window.addEventListener("resize", function(){
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(function(){ if(state.musicMode==="sheet") renderStaff(); }, 120);
+  });
+
+  /* ---------------- wiring ---------------- */
+  titleInput.addEventListener("input", function(){ state.title=titleInput.value; markDirty(); });
+  lyricsTextarea.addEventListener("input", function(){ state.lyrics=lyricsTextarea.value; updateWordCount(); markDirty(); });
+  spellToggle.addEventListener("change", function(){ lyricsTextarea.spellcheck=spellToggle.checked; });
+
+  musicModeSelect.addEventListener("change", function(){
+    state.musicMode=musicModeSelect.value;
+    toggleMusicMode();
+    markDirty();
+  });
+
+  function addNote(){
+    state.sheetNotes.push({step:pitchSelect.value, octave:+octaveSelect.value, acc:accSelect.value, dur:durSelect.value, rest:false});
+    renderStaff(); markDirty();
+  }
+  function addRest(){
+    state.sheetNotes.push({dur:durSelect.value, rest:true});
+    renderStaff(); markDirty();
+  }
+  function addBreak(){
+    state.sheetNotes.push({type:"break"});
+    renderStaff(); markDirty();
+  }
+  btnAddNote.addEventListener("click", addNote);
+  btnAddRest.addEventListener("click", addRest);
+  btnNewLineSheet.addEventListener("click", addBreak);
+  btnUndo.addEventListener("click", function(){
+    state.sheetNotes.pop();
+    renderStaff(); markDirty();
+  });
+  btnClearSheet.addEventListener("click", function(){
+    if(!confirm("Clear the staff? This cannot be undone.")) return;
+    state.sheetNotes=[];
+    renderStaff(); markDirty();
+  });
+
+  /* ---------------- save / load ---------------- */
+  function slugify(s){
+    return (s||"").trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") || "untitled-song";
+  }
+  btnSave.addEventListener("click", function(){
+    var data={
+      version:2,
+      title:state.title,
+      lyrics:lyricsTextarea.value,
+      musicMode:state.musicMode,
+      tabSystems:state.tabSystems,
+      sheetNotes:state.sheetNotes,
+      savedAt:new Date().toISOString()
+    };
+    var blob=new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    a.href=url;
+    a.download=slugify(state.title)+".song.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    markClean("Saved · "+new Date().toLocaleTimeString());
+  });
+
+  fileLoadInput.addEventListener("change", function(e){
+    var file=e.target.files[0];
+    if(!file) return;
+    var reader=new FileReader();
+    reader.onload=function(){
+      try{
+        var data=JSON.parse(String(reader.result));
+        state.title = typeof data.title==="string" ? data.title : "Untitled Song";
+        titleInput.value=state.title;
+        state.lyrics = typeof data.lyrics==="string" ? data.lyrics : "";
+        lyricsTextarea.value=state.lyrics;
+        state.musicMode = data.musicMode==="sheet" ? "sheet" : "tab";
+        musicModeSelect.value=state.musicMode;
+
+        if(Array.isArray(data.tabSystems) && data.tabSystems.length){
+          state.tabSystems=sanitizeLoadedSystems(data.tabSystems);
+        } else if(typeof data.tabText==="string" && data.tabText.trim()){
+          state.tabSystems=parseLegacyTabText(data.tabText);
+        } else {
+          state.tabSystems=[makeDefaultSystem()];
+        }
+        renderTabGrid();
+
+        state.sheetNotes = Array.isArray(data.sheetNotes) ? data.sheetNotes : [];
+        toggleMusicMode();
+        renderStaff();
+        updateWordCount();
+        markClean("Loaded · "+(data.savedAt ? new Date(data.savedAt).toLocaleString() : "earlier project"));
+      }catch(err){
+        alert("This doesn't look like a valid Songwriter's Desk project file. Please choose a .song.json file that was saved from this tool.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value="";
+  });
+
+  btnNew.addEventListener("click", function(){
+    if(dirty && !confirm("Start a new song? Unsaved changes will be lost.")) return;
+    state=defaultState();
+    titleInput.value=state.title;
+    lyricsTextarea.value="";
+    musicModeSelect.value="tab";
+    renderTabGrid();
+    toggleMusicMode();
+    renderStaff();
+    updateWordCount();
+    markClean("Ready");
+  });
+
+  window.addEventListener("beforeunload", function(e){
+    if(dirty){ e.preventDefault(); e.returnValue=""; }
+  });
+
+  /* ---------------- init ---------------- */
+  titleInput.value=state.title;
+  renderTabGrid();
+  toggleMusicMode();
+  applySplit();
+  updateWordCount();
+  renderStaff();
+  markClean("Ready");
+
+})();
+</script>
+</body>
+</html>
